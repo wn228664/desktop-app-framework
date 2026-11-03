@@ -6,6 +6,18 @@
 
 这是可持续开发的项目基础：包含独立的主进程、受限预加载桥、组件化界面、文件与传输服务、自动化验证和打包配置。演示页只展示框架能力，未接入的服务明确提示未配置。
 
+## 运行截图
+
+2026-11-03 采集，来自源码版本 `d0eee94` 的生产构建，运行于 **macOS 的真实 Electron 进程**。截图为应用窗口内容（1240 × 788）；Windows 运行需在 Windows 环境单独验证。
+
+**框架概览与基础能力入口**
+
+![Electron macOS 框架概览运行截图](docs/screenshots/desktop-overview.png)
+
+**通用组件：表单、异步按钮、弹窗与抽屉入口**
+
+![Electron macOS 通用组件运行截图](docs/screenshots/desktop-components.png)
+
 ## 快速开始
 
 要求 Node.js 22.13+，建议使用维护中的 Node.js 22 LTS；npm 10+。在 macOS 或 Windows PowerShell 进入项目目录后运行：
