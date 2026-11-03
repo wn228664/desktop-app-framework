@@ -1,0 +1,232 @@
+/*
+ * 桌面适配基于缩放后的逻辑视口，不按设备名称猜测尺寸。
+ * 宽度决定栏数与导航表现，高度决定固定区域占用；两者组合覆盖短窗口及 125%/150% 缩放。
+ * 分页和表格宽内容保留组件内横向滚动，不隐藏每页条数选择来换取表面上的“不溢出”。
+ */
+/* 中等工作区压缩侧栏与留白，首先让出装饰图空间。 */
+@media (max-width: 1150px) {
+  .app-shell .sidebar {
+    width: 196px;
+    padding-inline: 12px;
+  }
+  .app-shell .framework-page {
+    padding-inline: 24px;
+  }
+  .app-shell .topbar,
+  .app-shell .statusbar {
+    padding-inline: 24px;
+  }
+  .architecture-art {
+    display: none;
+  }
+  .hero-panel {
+    min-height: 245px;
+  }
+}
+@media (max-width: 950px) {
+  /* 侧栏变为图标导航，外层 RouterLink 仍保留 aria-label/title，不能只留下无名称图标。 */
+  .app-shell .sidebar {
+    width: 76px;
+    padding-inline: 10px;
+  }
+  .app-shell .brand {
+    margin-inline: 8px;
+  }
+  .brand-text,
+  .nav-label,
+  .nav-item > span,
+  .sidebar-note,
+  .sidebar-footer > span:not(.status-dot) {
+    display: none;
+  }
+  .app-shell .nav-item {
+    justify-content: center;
+    padding: 14px;
+  }
+  .app-shell .sidebar-footer {
+    margin-top: auto;
+    justify-content: center;
+  }
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+  .foundation-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 0;
+  }
+  .foundation-strip > div:nth-child(3) {
+    padding-left: 2px;
+  }
+  .foundation-strip > div:nth-child(2) {
+    border-right: 0;
+  }
+  .hero-copy h2 {
+    font-size: 26px;
+  }
+}
+@media (max-width: 620px) {
+  /* 双栏与设置行改为单列，依靠内容容器滚动容纳高度；不放开 body 滚动。 */
+  .app-shell .sidebar {
+    width: 58px;
+    padding: 22px 5px 14px;
+  }
+  .app-shell .brand {
+    margin: 0 5px 28px;
+  }
+  .brand-symbol {
+    width: 36px;
+    height: 36px;
+  }
+  .app-shell .nav-item {
+    padding: 12px 9px;
+  }
+  .app-shell .framework-page {
+    padding: 20px 15px 14px;
+  }
+  .app-shell .topbar,
+  .app-shell .statusbar {
+    padding-inline: 15px;
+  }
+  .topbar {
+    height: 50px;
+  }
+  .topbar-right {
+    gap: 10px;
+  }
+  .platform-badge,
+  .breadcrumb > span:first-child,
+  .breadcrumb > span:nth-child(2) {
+    display: none;
+  }
+  .page-heading {
+    padding-bottom: 17px;
+  }
+  .page-heading h1 {
+    font-size: 22px;
+  }
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+  .hero-panel {
+    padding: 25px 22px;
+  }
+  .hero-copy h2 {
+    font-size: 23px;
+  }
+  .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .panel {
+    padding: 19px;
+  }
+  .setting-row {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .setting-row > div:first-child {
+    flex: 1 0 100%;
+  }
+  .statusbar > span:first-child {
+    max-width: 62%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .table-panel {
+    padding: 15px;
+  }
+  .search-form {
+    gap: 10px;
+  }
+  .search-form .el-form-item {
+    flex-basis: 130px;
+  }
+  .table-toolbar {
+    gap: 5px;
+  }
+  .toolbar-actions {
+    gap: 4px;
+  }
+  .selection-note {
+    display: none;
+  }
+}
+@media (max-height: 600px) {
+  /* 减少固定区域占用，把空间优先交给正文，而不是缩小文字或裁掉底部操作。 */
+  .sidebar .brand {
+    margin-bottom: 23px;
+  }
+  .sidebar-note {
+    display: none;
+  }
+  .sidebar-footer {
+    margin-top: auto;
+  }
+  .app-shell .topbar {
+    height: 46px;
+  }
+  .framework-page {
+    padding-top: 17px;
+  }
+  .page-heading {
+    padding-bottom: 15px;
+  }
+  .page-heading p {
+    margin-top: 5px;
+  }
+  .page-heading h1 {
+    font-size: 22px;
+  }
+  .table-divider {
+    margin-block: 14px;
+  }
+  .table-toolbar {
+    margin-bottom: 9px;
+  }
+  .table-pagination {
+    padding-top: 10px;
+  }
+}
+
+/* 极短逻辑视口优先保留表格正文与分页；搜索仍有 aria-label，不依赖可见标签。 */
+@media (max-height: 440px) {
+  .table-page .page-heading p {
+    display: none;
+  }
+  .table-page .page-heading {
+    padding-bottom: 10px;
+  }
+  .table-page .page-heading h1 {
+    font-size: 18px;
+  }
+  .table-page .table-panel {
+    padding: 10px 12px;
+  }
+  .table-page .search-form .el-form-item {
+    flex: 1 1 90px;
+    min-width: 0;
+  }
+  .table-page .search-form .el-form-item__label {
+    display: none;
+  }
+  .table-page .search-actions .el-button {
+    padding-inline: 10px;
+  }
+  .table-page .table-divider {
+    margin-block: 8px;
+  }
+  .table-page .table-toolbar {
+    margin-bottom: 6px;
+  }
+  .table-page .table-toolbar .el-button {
+    height: 24px;
+    padding: 5px 8px;
+  }
+  .table-page .table-pagination {
+    padding-top: 8px;
+  }
+  .table-page .el-pagination {
+    --el-pagination-button-height: 24px;
+  }
+}

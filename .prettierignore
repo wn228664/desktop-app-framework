@@ -1,0 +1,9 @@
+node_modules
+out
+release
+artifacts
+test-results
+playwright-report
+package-lock.json
+docs/dependency-sbom.json
+resources/THIRD_PARTY_NOTICES.txt

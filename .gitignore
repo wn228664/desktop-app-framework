@@ -1,0 +1,16 @@
+node_modules/
+out/
+release/
+artifacts/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+*.pem
+*.p12
+*.pfx
+coverage/
+resources/THIRD_PARTY_NOTICES.txt

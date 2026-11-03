@@ -1,0 +1,44 @@
+name: Desktop framework
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    # 两个平台分别使用原生 runner 执行 Electron；目录打包不等于已做安装、签名或更新验收。
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      # 验证任务只生成本地测试包，不自动使用 runner 或开发机器上已有的签名身份。
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # verify 会生成生产代码与许可清单，E2E 随后启动这份代码，不以空壳窗口作为通过依据。
+      - run: npm run verify
+      - run: npm run test:e2e
+      - run: npm audit --omit=dev
+      - if: runner.os == 'macOS'
+        run: npx electron-builder --mac --dir
+      - if: runner.os == 'Windows'
+        run: npx electron-builder --win --dir
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-${{ runner.os }}
+          path: |
+            release/
+            artifacts/
+            playwright-report/
+          retention-days: 7
