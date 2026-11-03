@@ -113,6 +113,12 @@ h3 {
   border-right: 1px solid var(--line);
   overflow: hidden;
 }
+/* 短窗口或文字缩放时导航自身滚动，不能把最后一个入口裁在外壳之外。 */
+.sidebar > nav {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .brand {
   display: flex;
   align-items: center;

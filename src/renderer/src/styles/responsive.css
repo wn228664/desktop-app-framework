@@ -191,17 +191,21 @@
 
 /* 极短逻辑视口优先保留表格正文与分页；搜索仍有 aria-label，不依赖可见标签。 */
 @media (max-height: 440px) {
+  /* 原生标题栏不属于逻辑视口；同时覆盖窄屏留白，给表头和至少一行正文留下实际空间。 */
+  .app-shell .table-page {
+    padding-block: 8px;
+  }
   .table-page .page-heading p {
     display: none;
   }
   .table-page .page-heading {
-    padding-bottom: 10px;
+    padding-bottom: 8px;
   }
   .table-page .page-heading h1 {
     font-size: 18px;
   }
   .table-page .table-panel {
-    padding: 10px 12px;
+    padding: 8px 12px;
   }
   .table-page .search-form .el-form-item {
     flex: 1 1 90px;
@@ -213,18 +217,24 @@
   .table-page .search-actions .el-button {
     padding-inline: 10px;
   }
+  .table-page .search-actions {
+    padding-block: 0;
+  }
   .table-page .table-divider {
-    margin-block: 8px;
+    margin-block: 4px;
   }
   .table-page .table-toolbar {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
   .table-page .table-toolbar .el-button {
     height: 24px;
     padding: 5px 8px;
   }
   .table-page .table-pagination {
-    padding-top: 8px;
+    padding-top: 4px;
+  }
+  .table-page .el-table .el-table__cell {
+    padding-block: 4px;
   }
   .table-page .el-pagination {
     --el-pagination-button-height: 24px;

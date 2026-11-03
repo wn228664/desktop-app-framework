@@ -195,6 +195,69 @@ test('主题持久化、缩放与所有页面无 body 滚动', async () => {
   expect(failures).toEqual([])
 })
 
+test('短内容视口保留完整表格行、搜索、分页和导航入口', async () => {
+  const previous = await app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    const state = {
+      size: window.getSize(),
+      minimum: window.getMinimumSize(),
+      zoom: window.webContents.getZoomFactor(),
+    }
+    // 直接固定内容尺寸，复现 Windows 标题栏占位后的 496×317 逻辑视口，避免 macOS 误通过。
+    window.setMinimumSize(0, 0)
+    window.setContentSize(744, 476)
+    window.webContents.setZoomFactor(1.5)
+    return state
+  })
+  try {
+    await page.waitForFunction(() => innerWidth === 496 && innerHeight === 317)
+    await page.getByRole('link', { name: '表格与搜索', exact: true }).click()
+    await expect(page.locator('.table-toolbar')).toContainText('共 24 项')
+    const content = page.locator('.el-table__body-wrapper')
+    const row = content.locator('tbody tr').first()
+    await expect(row).toBeVisible()
+    const bodyBox = await content.boundingBox()
+    const rowBox = await row.boundingBox()
+    expect(rowBox.y).toBeGreaterThanOrEqual(bodyBox.y)
+    expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(bodyBox.y + bodyBox.height)
+    // 搜索与完整分页操作均可触达，不能靠隐藏条数选择或放开 body 滚动来通过。
+    await page.getByRole('textbox', { name: '名称或说明' }).fill('FileGrants')
+    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await expect(page.locator('.table-toolbar')).toContainText('共 1 项')
+    await page.getByRole('button', { name: '重置', exact: true }).click()
+    await page.locator('.el-pager li').filter({ hasText: /^2$/ }).click()
+    await expect(page.locator('.table-content').getByText('Request', { exact: true })).toBeVisible()
+    await page.locator('.el-pagination__sizes').scrollIntoViewIfNeeded()
+    await expect(page.locator('.el-pagination__sizes')).toBeInViewport({ ratio: 1 })
+    await page.getByRole('link', { name: '应用设置', exact: true }).scrollIntoViewIfNeeded()
+    await expect(page.getByRole('link', { name: '应用设置', exact: true })).toBeInViewport({
+      ratio: 1,
+    })
+    const navigation = await page.locator('.sidebar > nav').evaluate((element) => {
+      const last = element.lastElementChild.getBoundingClientRect()
+      const bounds = element.getBoundingClientRect()
+      return { top: last.top, bottom: last.bottom, start: bounds.top, end: bounds.bottom }
+    })
+    expect(navigation.top).toBeGreaterThanOrEqual(navigation.start)
+    expect(navigation.bottom).toBeLessThanOrEqual(navigation.end)
+    expect(
+      await page.evaluate(() => ({
+        width: innerWidth,
+        height: innerHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+      })),
+    ).toEqual({ width: 496, height: 317, scrollWidth: 496, scrollHeight: 317 })
+  } finally {
+    await app.evaluate(({ BrowserWindow }, state) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      window.setMinimumSize(...state.minimum)
+      window.setSize(...state.size)
+      window.webContents.setZoomFactor(state.zoom)
+    }, previous)
+  }
+})
+
 test('同一帧连续点击只产生一次按钮或弹窗成功回调', async () => {
   await page.reload()
   await page.getByRole('link', { name: '通用组件', exact: true }).click()

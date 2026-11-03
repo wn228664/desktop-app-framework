@@ -13,7 +13,7 @@
 | Prettier             | 通过              | 匹配的源文件和文档                                                           |
 | Node 核心测试        | 28 项通过         | 动作取消/重试/旧结果、URL 与 IPC、文件授权、持久化、请求/上传/下载、更新状态 |
 | 生产构建             | 通过              | main、CommonJS preload、renderer                                             |
-| 真实 Electron E2E    | 9 组通过          | 下列交互与沙盒边界                                                           |
+| 真实 Electron E2E    | 10 组通过         | 下列交互与沙盒边界，含 Windows 短内容视口的确定尺寸回归                      |
 | 开发模式             | 通过              | npm run dev，实际原生窗口检查首页与表格，无启动错误                          |
 | macOS arm64 应用目录 | 通过              | release/mac-arm64/Desktop Framework.app                                      |
 | macOS arm64 DMG      | 通过              | release/desktop-app-framework-1.0.0-mac-arm64.dmg，已执行 hdiutil 校验       |
@@ -33,6 +33,14 @@
 新增回归覆盖：同帧连续点击仅一次成功回调，最小化恢复与关闭中重开，损坏窗口尺寸回退，外观设置不写系统启动项。
 
 适配复核发现过极短逻辑视口下正文被工具栏挤压，已增加专项布局并补上述回归断言。根节点禁止滚动与内部内容可达分别检查，避免以 overflow:hidden 掩盖内容裁切。
+
+## GitHub 双平台复核
+
+首次推送的 macOS CI 全部通过；Windows 的静态检查、28 项单测和生产构建通过，交互测试暴露了原生标题栏差异：760×540 外窗口在 150% 缩放后只剩 496×317 逻辑内容视口，表格区域仅 30px，正文不可见。
+
+通过固定内容尺寸在本机复现后，压缩短视口的表格留白与单元格内边距，表格区域增至约 72px，至少一行正文完整可见。侧栏导航采用自身滚动，避免末尾入口被截断。新增用例直接固定相同逻辑内容尺寸，检查完整行、搜索、分页条数入口、侧栏最后入口和根节点无滚动；没有降低原有高度断言或跳过 Windows 测试。
+
+当前本地 10 组交互测试全部通过。修复后的远端结果见 [Actions 实际记录](https://github.com/wn228664/desktop-app-framework/actions/workflows/desktop.yml)。原有 DMG/NSIS 安装包验证属于首次推送前的源码快照；CSS 修复后的应用目录以对应 CI artifact 为准，安装与签名边界仍按下文执行。
 
 ## 质量复核
 

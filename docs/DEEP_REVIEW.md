@@ -33,7 +33,7 @@
 
 - ESLint、Prettier、生产构建通过。
 - 28 项 Node 测试通过，包含实际 HTTP 请求、multipart 上传、文件替换与存储行为。
-- 9 组真实 Electron 回归通过，包含同帧提交、窗口时序、启动项接口副作用与缩放矩阵。
+- 10 组真实 Electron 回归通过，包含同帧提交、窗口时序、启动项接口副作用与缩放矩阵；新增 496×317 内容视口检查，跨平台 CI 复核记录见 [VALIDATION.md](VALIDATION.md)。
 - `node --test 'tests/*.test.js'` 的字面量 glob 形式通过，避免只依赖 macOS shell 展开。
 - 开发模式通过本机原生窗口检查；生产 CSP 不包含开发 WebSocket 例外。
 - macOS arm64 应用启动、DMG 生成及 hdiutil 校验通过。
