@@ -7,8 +7,11 @@
  * 用法：<FrameworkPage title="表格与搜索" :scroll="false"><DataTable ... /></FrameworkPage>
  */
 defineProps({
+  /** 属性 title：必填页面一级标题。 */
   title: { type: String, required: true },
+  /** 属性 description：可选页说明，默认空串。 */
   description: { type: String, default: '' },
+  /** 属性 scroll：内容区是否自行滚动，默认 true；表格页应 false 交给表格滚动。 */
   scroll: { type: Boolean, default: true },
 })
 </script>

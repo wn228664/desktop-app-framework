@@ -11,15 +11,30 @@ import AsyncButton from '../components/AsyncButton.vue'
 import { usePreferences } from '../stores/preferences.js'
 import { unwrap } from '../core/desktop.js'
 
+// preferences：主进程持久化偏好的界面投影，失败保持旧值。
 const preferences = usePreferences()
+// token：尚未提交的令牌输入草稿，仅留在当前页。
 const token = ref('')
+// remember：是否明确允许系统加密持久化，默认 false。
 const remember = ref(false)
+// update：当前公开更新状态 ref，默认未配置。
 const update = ref({ status: 'unconfigured' })
+// info：公开安装包和 API 配置状态 ref。
 const info = ref(null)
+// unsubscribe：当前更新事件监听的清理函数。
 let unsubscribe
+// disposed：当前组件或控制器是否已销毁，初始 false，阻止迟到结果回填。
 let disposed = false
+// updateRevision：已收到的更新事件版本，事件优先于较早快照。
 let updateRevision = 0
-const showError = (error) => ElMessage.error(error.message)
+// showError：页面公开错误提示回调。
+const showError =
+  /**
+   * 展示本页可公开的操作错误。
+   * error：当前公开失败或错误 ref，主动取消不追加失败提示。
+   */
+  (error) => ElMessage.error(error.message)
+// labels：公开更新状态到中文说明的映射。
 const labels = {
   unconfigured: '未配置更新服务',
   idle: '可以检查更新',
@@ -30,27 +45,43 @@ const labels = {
   downloaded: '新版本已下载',
   failed: '更新失败',
 }
-/** 将控件变更交给串行偏好 store；失败由本页展示，控件继续使用上一份成功快照。 */
+/**
+ * 将偏好补丁交给串行 store，失败保留旧快照。
+ * patch：本次控件提议的偏好补丁，不直接改持久化快照。
+ */
 async function save(patch) {
   try {
     await preferences.save(patch)
   } catch (error) {
+    // error：当前公开失败或错误 ref，主动取消不追加失败提示。
+
     showError(error)
   }
 }
 /**
  * 显式提交当前令牌与 remember 选择；系统加密或写入失败时保留输入供用户处理。
  * 等待期间用户若编辑出新草稿，旧请求成功不能把新内容一起清空。
+ *
+ * 提交捕获令牌，成功后只清同一份草稿。
  */
 async function saveToken() {
+  // submitted：此次保存捕获的令牌草稿，成功时只清同一份未再编辑的输入。
   const submitted = token.value
-  await unwrap((api) => api.credentials.set({ token: submitted, remember: remember.value }))
+  await unwrap(
+    /**
+     * 显式设置凭据和 remember，不读取主进程令牌。
+     * api：沙盒 preload 的固定 desktop 能力接口。
+     */
+    (api) => api.credentials.set({ token: submitted, remember: remember.value }),
+  )
   if (token.value === submitted) token.value = ''
   ElMessage.success('访问令牌已设置，界面不保留令牌内容')
 }
 /**
  * 安装会退出并重启应用，必须先让用户确认已保存工作。
  * 取消确认属于正常分支，不展示错误；确认后仍由主进程检查 downloaded 状态。
+ *
+ * 原生更新安装前让用户确认已保存工作，取消属于正常分支。
  */
 async function install() {
   try {
@@ -62,33 +93,73 @@ async function install() {
   } catch {
     return
   }
-  await unwrap((api) => api.updates.run('install'))
+  await unwrap(
+    /**
+     * 把已确认安装命令交给主进程状态机。
+     * api：沙盒 preload 的固定 desktop 能力接口。
+     */
+    (api) => api.updates.run('install'),
+  )
 }
-onMounted(async () => {
-  try {
-    unsubscribe = window.desktop.updates.subscribe((state) => {
-      updateRevision++
-      update.value = state
-    })
-    const snapshotRevision = updateRevision
-    const [state, appInfo] = await Promise.all([
-      unwrap((api) => api.updates.get()),
-      unwrap((api) => api.info()),
-    ])
-    if (!disposed) {
-      if (snapshotRevision === updateRevision) update.value = state
-      info.value = appInfo
+onMounted(
+  /**
+   * 先订阅更新再读快照及应用诊断，版本隔离迟到快照。
+   */
+  async () => {
+    try {
+      unsubscribe = window.desktop.updates.subscribe(
+        /**
+         * 递增事件版本并立即采用公开更新事件。
+         * state：更新事件或初始化快照中的公开状态。
+         */
+        (state) => {
+          updateRevision++
+          update.value = state
+        },
+      )
+      // snapshotRevision：初始化请求开始时捕获的更新事件版本。
+      const snapshotRevision = updateRevision
+      // state：更新事件或初始化快照中的公开状态。
+      // appInfo：并行读取的公开应用诊断。
+      const [state, appInfo] = await Promise.all([
+        unwrap(
+          /**
+           * 读取公开更新状态快照。
+           * api：沙盒 preload 的固定 desktop 能力接口。
+           */
+          (api) => api.updates.get(),
+        ),
+        unwrap(
+          /**
+           * 读取公开应用与安装包能力信息。
+           * api：沙盒 preload 的固定 desktop 能力接口。
+           */
+          (api) => api.info(),
+        ),
+      ])
+      if (!disposed) {
+        if (snapshotRevision === updateRevision) update.value = state
+        info.value = appInfo
+      }
+    } catch (error) {
+      // error：当前公开失败或错误 ref，主动取消不追加失败提示。
+
+      showError(error)
     }
-  } catch (error) {
-    showError(error)
-  }
-})
-onScopeDispose(() => {
-  disposed = true
-  unsubscribe?.()
-})
+  },
+)
+onScopeDispose(
+  /**
+   * 页面销毁时解除更新事件订阅。
+   */
+  () => {
+    disposed = true
+    unsubscribe?.()
+  },
+)
 </script>
 
+<!-- 模板绑定：value 为允许的缩放选项；$event 为相应控件的新值，只作为白名单偏好补丁提交。清除令牌、检查与下载更新的 action 为无参点击工厂，内层 api 是固定桥；安装走脚本中的用户确认。 -->
 <template>
   <FrameworkPage title="应用设置" description="清晰的偏好设置，可控的系统行为。">
     <div class="settings-stack">

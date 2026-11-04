@@ -7,8 +7,11 @@ import { AppError } from '../shared/errors.js'
  * @param {string} trustedDocument 精确文档 URL，不含路由 hash；开发地址由当前 dev server 提供。
  * @returns {void} 主窗口、主框架、文档均匹配才放行，允许 hash 路由切换。
  * @throws {AppError} FORBIDDEN：其他窗口、iframe、外部文档或已销毁窗口均拒绝。
+ *
+ * 核对窗口、主框架和精确文档 URL，任一不匹配即拒绝 IPC。
  */
 export function assertSender(event, window, trustedDocument) {
+  // frame：本次 IPC 的真实 senderFrame，必须等于当前窗口主框架。
   const frame = event.senderFrame
   if (
     !window ||

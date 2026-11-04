@@ -7,9 +7,13 @@
  * 用法：<StateView :loading="pending" :error="error" :empty="!rows.length" @retry="reload">...</StateView>
  */
 defineProps({
+  /** 属性 loading：最高优先级加载态，默认 false。 */
   loading: Boolean,
+  /** 属性 error：已经脱敏的 Error/对象/文本，默认 null，优先级低于 loading。 */
   error: { type: [Error, Object, String], default: null },
+  /** 属性 empty：无数据开关，默认 false，不能替代失败。 */
   empty: Boolean,
+  /** 属性 emptyText：空态说明，默认“暂无内容”。 */
   emptyText: { type: String, default: '暂无内容' },
 })
 defineEmits(['retry'])

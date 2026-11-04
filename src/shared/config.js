@@ -9,23 +9,40 @@ import { ensure, text, trustedUrl } from './validation.js'
  * @throws {AppError} URL、origin 或更新发布者不合法时终止构建，避免带错配置分发。
  */
 export function resolveRuntimeConfig(environment, development = false) {
+  // base：去掉前后空白后的公开 API 基址，未配置为空串。
   const base = environment.DESKTOP_API_BASE_URL?.trim() || ''
   if (base) {
+    // url：当前来源配置的解析结果，用于复验查询、目录及 origin。
     const url = trustedUrl(base, development)
     ensure(!url.search, 'API 基址不能包含查询参数')
   }
+  // origins：校验后的下载 origin 序列，返回前去重。
   const origins = (environment.DESKTOP_DOWNLOAD_ORIGINS || '')
     .split(',')
-    .map((item) => item.trim())
+    .map(
+      /**
+       * 移除逗号分隔下载来源项的前后空白。
+       * item：单个下载来源配置文本，必须是纯 HTTPS origin。
+       */
+      (item) => item.trim(),
+    )
     .filter(Boolean)
-    .map((item) => {
-      const url = trustedUrl(item)
-      ensure(
-        url.pathname === '/' && !url.search,
-        '下载白名单必须填写 origin，不能包含路径或查询参数',
-      )
-      return url.origin
-    })
+    .map(
+      /**
+       * 检查下载项只有 origin，不含目录或查询。
+       * item：单个下载来源配置文本，必须是纯 HTTPS origin。
+       */
+      (item) => {
+        // url：当前来源配置的解析结果，用于复验查询、目录及 origin。
+        const url = trustedUrl(item)
+        ensure(
+          url.pathname === '/' && !url.search,
+          '下载白名单必须填写 origin，不能包含路径或查询参数',
+        )
+        return url.origin
+      },
+    )
+  // update：公开更新基址，非空时必须同时声明发布者。
   const update = environment.DESKTOP_UPDATE_URL?.trim() || ''
   if (update) {
     ensure(!trustedUrl(update).search, '更新基址不能包含查询参数')
@@ -47,9 +64,10 @@ export function resolveRuntimeConfig(environment, development = false) {
  * 原生窗口几何校验；实际显示器工作区夹取由主进程创建窗口时完成。
  * @param {Object} value 完整 x/y/width/height，单位为 Electron 屏幕逻辑像素，不接受部分补丁。
  * @returns {{x:number,y:number,width:number,height:number}} 仅保留几何字段的新对象。
- * @throws {AppError} 非整数、非正尺寸或超范围值；JsonStore.load 会将其归为配置损坏并使用默认值。
+ * @throws {AppError} 非整数、非正尺寸或超范围值；JsonStore.load 将其包装为 STORAGE_CORRUPT，启动链捕获后沿用内存默认快照。
  */
 export function windowBounds(value) {
+  // key：窗口几何字段 x/y/width/height，逐项要求安全整数。
   for (const key of ['x', 'y', 'width', 'height'])
     ensure(Number.isSafeInteger(value?.[key]), '窗口尺寸无效')
   ensure(Math.abs(value.x) <= 1_000_000 && Math.abs(value.y) <= 1_000_000, '窗口位置超出范围')

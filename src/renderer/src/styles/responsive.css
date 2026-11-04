@@ -237,6 +237,7 @@
     padding-block: 4px;
   }
   .table-page .el-pagination {
+    /* --el-pagination-button-height：短视口分页按钮高度，配合容器横向滚动保留完整操作；当前选择器决定明暗或视口覆盖范围。 */
     --el-pagination-button-height: 24px;
   }
 }

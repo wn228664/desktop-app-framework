@@ -5,14 +5,23 @@
   font-size: 14px;
   color: #263347;
   background: #f4f6fa;
+  /* --canvas：页面与工作区画布背景；当前选择器决定明暗或视口覆盖范围。 */
   --canvas: #f4f6fa;
+  /* --surface：卡片、侧栏和浮层的基础表面；当前选择器决定明暗或视口覆盖范围。 */
   --surface: #fff;
+  /* --ink：主要正文与标题色；当前选择器决定明暗或视口覆盖范围。 */
   --ink: #263347;
+  /* --muted：次级说明和状态文字色；当前选择器决定明暗或视口覆盖范围。 */
   --muted: #626f83;
+  /* --line：分隔线及普通边框色；当前选择器决定明暗或视口覆盖范围。 */
   --line: #e8ecf2;
+  /* --accent：链接、焦点和主要强调色；当前选择器决定明暗或视口覆盖范围。 */
   --accent: #405bc9;
+  /* --soft-accent：低强调选中背景；当前选择器决定明暗或视口覆盖范围。 */
   --soft-accent: #edf0ff;
+  /* --el-color-primary：Element Plus 主色，与页面主题协调；当前选择器决定明暗或视口覆盖范围。 */
   --el-color-primary: #405bc9;
+  /* --el-border-radius-base：Element Plus 通用控件圆角；当前选择器决定明暗或视口覆盖范围。 */
   --el-border-radius-base: 7px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -20,17 +29,29 @@
 }
 /* 暗色由偏好 store 控制 html.dark；控件弹层挂在 body 下，因此变量必须定义在根节点。 */
 html.dark {
+  /* --canvas：页面与工作区画布背景；当前选择器决定明暗或视口覆盖范围。 */
   --canvas: #171b23;
+  /* --surface：卡片、侧栏和浮层的基础表面；当前选择器决定明暗或视口覆盖范围。 */
   --surface: #202632;
+  /* --ink：主要正文与标题色；当前选择器决定明暗或视口覆盖范围。 */
   --ink: #e2e7ef;
+  /* --muted：次级说明和状态文字色；当前选择器决定明暗或视口覆盖范围。 */
   --muted: #99a6ba;
+  /* --line：分隔线及普通边框色；当前选择器决定明暗或视口覆盖范围。 */
   --line: #343c4a;
+  /* --accent：链接、焦点和主要强调色；当前选择器决定明暗或视口覆盖范围。 */
   --accent: #9dafff;
+  /* --soft-accent：低强调选中背景；当前选择器决定明暗或视口覆盖范围。 */
   --soft-accent: #303956;
+  /* --el-color-primary：Element Plus 主色，与页面主题协调；当前选择器决定明暗或视口覆盖范围。 */
   --el-color-primary: #8f9ff0;
+  /* --el-bg-color：Element Plus 基础暗色表面；当前选择器决定明暗或视口覆盖范围。 */
   --el-bg-color: #202632;
+  /* --el-bg-color-overlay：挂在 body 下的暗色弹层背景；当前选择器决定明暗或视口覆盖范围。 */
   --el-bg-color-overlay: #252c39;
+  /* --el-fill-color-blank：Element Plus 空白填充表面；当前选择器决定明暗或视口覆盖范围。 */
   --el-fill-color-blank: #202632;
+  /* --el-border-color：Element Plus 暗色控件边框；当前选择器决定明暗或视口覆盖范围。 */
   --el-border-color: #414b5b;
   color-scheme: dark;
 }

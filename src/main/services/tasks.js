@@ -4,15 +4,22 @@ import { ensure, requestId } from '../../shared/validation.js'
 /**
  * 主进程任务注册表，统一请求/传输的超时、取消、进度和窗口归属。
  * 并行资源最多 8 个；完成历史最多 50 条。取消不等于远端写入回滚，也不强杀未响应 signal 的操作。
+ *
+ * 统一任务注册表，限制并行数量并按窗口隔离取消与观察历史；取消不强杀忽略 signal 的操作。
  */
 export class Tasks {
+  /** running：尚未真正结束的任务条目，持有控制器和 owner。 */
   #running = new Map()
+  /** history：最多 50 条完成任务快照，不保存响应或凭据。 */
   #history = new Map()
   /**
    * @param {Function} notify 接收 (owner,event)；event 为任务快照或 {type:'reset'}。
    * 通知仅用于界面观察，投递失败不改变调用 Promise 的结果。
+   *
+   * 保存只负责观察的任务通知回调。
    */
   constructor(notify) {
+    // this.notify：向所属窗口发布任务快照的观察回调，投递失败不改变操作结果。
     this.notify = notify
   }
 
@@ -24,33 +31,55 @@ export class Tasks {
    * @param {number} [timeout=60000] 超时毫秒数，从任务注册时开始计算，含原生对话框等待。
    * @returns {Promise<*>} operation 的结果；取消/超时即使遇到迟到成功也不会返回成功结果。
    * @throws {AppError|Error} 重复 ID、并发上限、取消、超时或 operation 本身的异常。
+   *
+   * 注册任务并约束并发，完成后释放槽位和计时器。
    */
   async run(owner, id, kind, operation, timeout = 60_000) {
     requestId(id)
     ensure(!this.#running.has(id), '请求标识重复')
     ensure(this.#running.size < 8, '并行任务已达上限，请稍后重试', 'BUSY')
+    // controller：此任务的取消控制器，超时或用户取消共用。
     const controller = new AbortController()
+    // task：公开进度快照及内部 owner，跨 IPC 投影时移除 owner。
     const task = { id, owner, kind, status: 'running', completed: 0, total: 0 }
+    // entry：当前任务内部条目，active=false 时禁止恢复已清理上下文。
     const entry = { controller, task, active: true }
     this.#running.set(id, entry)
-    const update = (progress = {}) => {
-      if (!entry.active) return
-      Object.assign(task, progress)
-      // 窗口关闭或观察者异常不能改变任务结果，也不能阻断 finally 清理。
-      try {
-        this.notify(owner, { ...task, owner: undefined })
-      } catch {
-        /* 进度是通知，任务结果仍由调用 Promise 返回。 */
+    // update：只在条目仍有效时提交和发布进度的函数。
+    const update =
+      /**
+       * 合并进度且只向仍有效的上下文发送脱敏快照。
+       * progress：本次公开进度补丁，缺省空对象。
+       */
+      (progress = {}) => {
+        if (!entry.active) return
+        Object.assign(task, progress)
+        // 窗口关闭或观察者异常不能改变任务结果，也不能阻断 finally 清理。
+        try {
+          this.notify(owner, { ...task, owner: undefined })
+        } catch {
+          /* 进度是通知，任务结果仍由调用 Promise 返回。 */
+        }
       }
-    }
-    const timer = setTimeout(() => controller.abort(new AppError('TIMEOUT', '操作超时')), timeout)
+    // timer：任务级超时计时器，finally 中清除。
+    const timer = setTimeout(
+      /**
+       * 到达任务截止时间时以 TIMEOUT 取消 signal。
+       */
+      () => controller.abort(new AppError('TIMEOUT', '操作超时')),
+      timeout,
+    )
     update()
     try {
+      // result：operation 最终结果，返回前还需校验取消。
       const result = await operation(controller.signal, update)
       controller.signal.throwIfAborted()
       update({ status: 'success' })
       return result
     } catch (error) {
+      // error：当前捕获的异常；跨 IPC 只交付 publicError 的公开字段。
+
+      // reason：优先采用 AbortSignal 的取消/超时原因，否则保留原异常。
       const reason = controller.signal.aborted ? controller.signal.reason : error
       update({ status: reason?.code === 'CANCELLED' ? 'cancelled' : 'failed' })
       throw reason
@@ -67,9 +96,12 @@ export class Tasks {
    * @param {number} owner 当前窗口 ID。
    * @param {string} id 合法任务 ID；格式错误仍会拒绝。
    * @returns {void} 发出 AbortSignal，资源槽位在 operation 真正结束后释放。
+   *
+   * 只取消当前窗口持有的指定活动任务。
    */
   cancel(owner, id) {
     requestId(id)
+    // entry：当前任务内部条目，active=false 时禁止恢复已清理上下文。
     const entry = this.#running.get(id)
     if (entry?.task.owner === owner) {
       entry.controller.abort(new AppError('CANCELLED', '操作已取消'))
@@ -80,14 +112,19 @@ export class Tasks {
    * 撤销整个窗口/凭据上下文，取消旧任务并清空历史；已在执行的旧结果不能恢复历史。
    * @param {number} owner 需要清理的窗口 ID。
    * @returns {void} 向仍存活的窗口发送 reset；相同 owner 后续仍可创建新任务。
+   *
+   * 撤销当前窗口任务上下文，清空历史并发布 reset。
    */
   clear(owner) {
+    // entry：当前任务内部条目，active=false 时禁止恢复已清理上下文。
     for (const entry of this.#running.values()) {
       if (entry.task.owner === owner) {
         entry.active = false
         entry.controller.abort(new AppError('CANCELLED', '任务上下文已清理'))
       }
     }
+    // id：完成历史中的任务标识，仅用于撤销当前窗口历史记录。
+    // task：公开进度快照及内部 owner，跨 IPC 投影时移除 owner。
     for (const [id, task] of this.#history) if (task.owner === owner) this.#history.delete(id)
     // 同一窗口切换凭据也会清理任务，通知 UI 撤销旧的运行中状态。
     try {
@@ -100,17 +137,46 @@ export class Tasks {
   /**
    * @param {number} owner 当前窗口 ID。
    * @returns {Array<Object>} 只含该窗口有效任务的副本；不公开 owner、控制器或响应内容。
+   *
+   * 合并有效运行任务和完成历史，返回去掉 owner 的副本。
    */
   list(owner) {
     return [
       ...this.#history.values(),
-      ...[...this.#running.values()].filter((entry) => entry.active).map(({ task }) => task),
+      ...[...this.#running.values()]
+        .filter(
+          /**
+           * 过滤已被上下文清理撤销的运行条目。
+           * entry：当前任务内部条目，active=false 时禁止恢复已清理上下文。
+           */
+          (entry) => entry.active,
+        )
+        .map(
+          /**
+           * 从有效运行条目提取任务快照。
+           * task：公开进度快照及内部 owner，跨 IPC 投影时移除 owner。
+           */
+          ({ task }) => task,
+        ),
     ]
-      .filter((task) => task.owner === owner)
-      .map((task) => {
-        const value = { ...task }
-        delete value.owner
-        return value
-      })
+      .filter(
+        /**
+         * 保留当前调用窗口所属任务。
+         * task：公开进度快照及内部 owner，跨 IPC 投影时移除 owner。
+         */
+        (task) => task.owner === owner,
+      )
+      .map(
+        /**
+         * 复制任务并删除仅主进程需要的 owner 字段。
+         * task：公开进度快照及内部 owner，跨 IPC 投影时移除 owner。
+         */
+        (task) => {
+          // value：从任务复制并剔除 owner 的公开快照。
+          const value = { ...task }
+          delete value.owner
+          return value
+        },
+      )
   }
 }

@@ -7,15 +7,31 @@ import { ref, onMounted } from 'vue'
 import FrameworkPage from '../components/FrameworkPage.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { unwrap } from '../core/desktop.js'
+// info：公开应用版本/平台信息 ref，加载前为空。
 const info = ref(null)
+// error：当前公开失败或错误 ref，主动取消不追加失败提示。
 const error = ref('')
-onMounted(async () => {
-  try {
-    info.value = await unwrap((api) => api.info())
-  } catch (failure) {
-    error.value = failure.message
-  }
-})
+onMounted(
+  /**
+   * 挂载时只读取公开诊断，失败在本页显示说明。
+   */
+  async () => {
+    try {
+      info.value = await unwrap(
+        /**
+         * 通过固定桥取得公开应用信息。
+         * api：沙盒 preload 的固定 desktop 能力接口。
+         */
+        (api) => api.info(),
+      )
+    } catch (failure) {
+      // failure：当前捕获的操作失败，仅向所属组件或页面反馈公开提示。
+
+      error.value = failure.message
+    }
+  },
+)
+// modules：本地中性能力说明与路由数据，不代表远端服务已经接通。
 const modules = [
   {
     icon: 'layers',
@@ -48,6 +64,7 @@ const modules = [
 ]
 </script>
 
+<!-- 模板绑定：module 为本地能力卡片定义，以 path 作键；tag 为当前卡片的中性标签，不代表远端能力已接通。 -->
 <template>
   <FrameworkPage title="框架概览" description="一个清晰、克制、可持续扩展的桌面起点。">
     <div class="overview-stack">

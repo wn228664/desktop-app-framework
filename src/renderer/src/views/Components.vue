@@ -14,11 +14,17 @@ import FileUpload from '../components/FileUpload.vue'
 import StateView from '../components/StateView.vue'
 import { delay } from '../core/async-action.js'
 
+// dialog：本地弹窗受控开关，初始 false。
 const dialog = ref(false)
+// drawer：本地抽屉受控开关，初始 false。
 const drawer = ref(false)
+// form：SchemaForm 引用，提交前调用 validate。
 const form = ref()
+// model：当前页拥有的名称/备注/布尔选项草稿，仅本地演示。
 const model = ref({ name: '', note: '', enabled: true })
+// state：状态展示控件当前选项，默认 content。
 const state = ref('content')
+// fields：本地表单 schema，声明名称验证、备注上限和启用开关。
 const fields = [
   {
     key: 'name',
@@ -36,11 +42,19 @@ const fields = [
   },
   { key: 'enabled', label: '启用选项', type: 'switch' },
 ]
-const showError = (error) => ElMessage.error(error.message)
+// showError：把组件公开失败展示为页面提示的回调。
+const showError =
+  /**
+   * 展示组件提供的公开错误消息。
+   * error：当前公开失败或错误 ref，主动取消不追加失败提示。
+   */
+  (error) => ElMessage.error(error.message)
 /**
  * @param {AbortSignal} signal 来自 AsyncButton，用于演示可取消提交。
  * @returns {Promise<Object>} 通过表单校验后的草稿浅拷贝；不写磁盘、不发网络请求。
  * 校验拒绝统一变成可展示错误，草稿保留原值供用户修正；真实项目应在这里接入服务适配。
+ *
+ * 验证表单后执行可取消本地延时并返回草稿副本。
  */
 async function submit(signal) {
   try {
@@ -51,11 +65,15 @@ async function submit(signal) {
   await delay(700, signal)
   return { ...model.value }
 }
+/**
+ * 只提示本地示例完成，不声称真实业务保存成功。
+ */
 function success() {
   ElMessage.success('本地示例提交完成')
 }
 </script>
 
+<!-- 模板绑定：两个 submit 回调均接收本次浮层的 signal，等待 700ms 本地夹具后返回 true；取消不报告成功。index 为抽屉中十二段中性文案的一基序号。 -->
 <template>
   <FrameworkPage title="通用组件" description="保留成熟组件的能力，只封装重复的交互契约。">
     <div class="two-column">

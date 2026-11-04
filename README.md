@@ -41,6 +41,8 @@ npm run dist:win      # Windows NSIS 安装包：x64、arm64
 
 生产发布的签名、公证和更新配置见 [平台与发布](docs/PLATFORMS.md)。本机验证范围、构建产物与未覆盖项见 [交付验证](docs/VALIDATION.md)。跨平台配置与跨平台运行验收分开记录。
 
+2026-11-04 本地复核：`npm run verify` 通过 ESLint、格式检查、28 项测试和生产构建；`npm run test:e2e` 在 macOS 的真实 Electron 中通过 10 项交互测试。手写源码与配置的中文注释范围见 [逐项注释范围](docs/ANNOTATION_SCOPE.md)。Windows 手工安装、系统集成、正式签名/公证与真实更新服务仍需对应环境验收。
+
 ## 技术选型
 
 | 层         | 选择                                       | 作用                               |
@@ -136,6 +138,7 @@ HTTP 凭据、文件授权和系统能力由主进程持有。渲染层启用沙
 - [平台、安装包、签名和更新](docs/PLATFORMS.md)
 - [代码质量、注释与验证](docs/QUALITY.md)
 - [源码注释整理记录](docs/COMMENT_REVIEW.md)
+- [逐项注释范围与格式边界](docs/ANNOTATION_SCOPE.md)
 - [依赖审计](docs/DEPENDENCIES.md)
 - [本次交付验证](docs/VALIDATION.md)
 - [深入检查与修复记录](docs/DEEP_REVIEW.md)

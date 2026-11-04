@@ -12,56 +12,123 @@ import { unwrap, transfer } from '../core/desktop.js'
 import { formatBytes, isHttpsUrl } from '../core/format.js'
 import { useTasks } from '../stores/tasks.js'
 
+// tasks：共享任务列表投影，页面仅观察和提供取消入口。
 const tasks = useTasks()
+// content：当前文本文件草稿 ref，初值空串，只在显式另存时写入。
 const content = ref('')
+// downloadUrl：用户填写的 HTTPS 下载草稿，主进程仍检查来源白名单。
 const downloadUrl = ref('')
+// clipboardValue：用户显式读取或编辑的剪贴板草稿，不自动轮询。
 const clipboardValue = ref('')
+// selected：所预览文件的公开名称 ref，未选择时为 null。
 const selected = ref(null)
+// disposed：当前组件或控制器是否已销毁，初始 false，阻止迟到结果回填。
 let disposed = false
-const showError = (error) => ElMessage.error(error.message)
-const showSaved = (result) => {
-  if (result.saved) ElMessage.success('文件已保存')
-}
+// showError：展示公开操作失败，不输出底层文件路径。
+const showError =
+  /**
+   * 展示明确公开的操作失败消息。
+   * error：当前公开失败或错误 ref，主动取消不追加失败提示。
+   */
+  (error) => ElMessage.error(error.message)
+// showSaved：只在 saved=true 时显示保存成功的回调。
+const showSaved =
+  /**
+   * 仅在用户实际完成保存时提示成功。
+   * result：当前有效周期的操作结果，具体形状由被调用契约定义。
+   */
+  (result) => {
+    if (result.saved) ElMessage.success('文件已保存')
+  }
 /**
  * 原生多选后只预览第一份 UTF-8 文本；其余授权也必须在 finally 释放。
  * 组件离开后不再写回内容，但迟到的文件结果仍需完成授权清理。
  * @returns {Promise<void>} 用户取消选择时保留原草稿与文件名。
+ *
+ * 原生多选后预览第一份文本，finally 释放所有授权，离页不回填。
  */
 async function pickText() {
-  const files = await unwrap((api) => api.files.pick())
+  // files：原生选择返回的授权列表，预览后全部释放。
+  const files = await unwrap(
+    /**
+     * 请求原生文件选择授权。
+     * api：沙盒 preload 的固定 desktop 能力接口。
+     */
+    (api) => api.files.pick(),
+  )
   if (!files.length) return
   try {
-    const value = await unwrap((api) => api.files.readText(files[0].id))
+    // value：第一份已授权文件的 UTF-8 文本内容。
+    const value = await unwrap(
+      /**
+       * 凭第一份授权 ID 读取有界 UTF-8 文本。
+       * api：沙盒 preload 的固定 desktop 能力接口。
+       */
+      (api) => api.files.readText(files[0].id),
+    )
     if (!disposed) {
       content.value = value
       selected.value = files[0].name
     }
   } finally {
-    for (const file of files) await unwrap((api) => api.files.release(file.id))
+    // file：待释放的单个不透明文件授权。
+    for (const file of files)
+      await unwrap(
+        /**
+         * 释放本次选择的单个文件能力。
+         * api：沙盒 preload 的固定 desktop 能力接口。
+         */
+        (api) => api.files.release(file.id),
+      )
   }
 }
-/** @returns {Promise<{saved:boolean}>} 由原生另存确认目标；false 是用户取消，不应显示保存成功。 */
+/**
+ * 把当前文本草稿交给原生另存为能力。
+ */
 async function saveText() {
-  return unwrap((api) => api.files.saveText({ content: content.value }))
+  return unwrap(
+    /**
+     * 发送当前文本快照，目标路径由系统对话框决定。
+     * api：沙盒 preload 的固定 desktop 能力接口。
+     */
+    (api) => api.files.saveText({ content: content.value }),
+  )
 }
-/** 用户主动读取剪贴板到本页草稿，内容不提交到服务端，也不保存为应用偏好。 */
+/**
+ * 用户触发时读取文本剪贴板到本页。
+ */
 async function readClipboard() {
-  clipboardValue.value = await unwrap((api) => api.clipboard.read())
+  clipboardValue.value = await unwrap(
+    /**
+     * 调用固定剪贴板读取桥，不访问 Node。
+     * api：沙盒 preload 的固定 desktop 能力接口。
+     */
+    (api) => api.clipboard.read(),
+  )
 }
 /**
  * @param {AbortSignal} signal 来自 AsyncButton，交给 transfer 绑定主进程下载任务。
  * @returns {Promise<{saved:boolean}>} 下载成功或用户取消选择；来源是否批准仍由主进程判断。
+ *
+ * 校验下载输入反馈后交给主进程下载，结果区分保存和取消。
  */
 async function download(signal) {
   if (!isHttpsUrl(downloadUrl.value)) throw new Error('请输入不含凭据的 HTTPS 地址')
   return transfer('download', { url: downloadUrl.value }, signal)
 }
+// statuses：公开任务状态到中文展示名称的映射。
 const statuses = { running: '进行中', success: '已完成', cancelled: '已取消', failed: '未完成' }
-onScopeDispose(() => {
-  disposed = true
-})
+onScopeDispose(
+  /**
+   * 标记页面销毁，阻止迟到的文本内容回填。
+   */
+  () => {
+    disposed = true
+  },
+)
 </script>
 
+<!-- 模板绑定：复制与通知 action 均为无参用户点击工厂，内层 api 是固定沙盒桥。任务循环 task 为公开任务快照，以 id 作键；取消只发送当前 ID，失败交 showError。 -->
 <template>
   <FrameworkPage title="桌面能力" description="用明确授权的原生接口连接设备，任务状态统一呈现。">
     <div class="two-column">

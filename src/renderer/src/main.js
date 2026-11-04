@@ -37,9 +37,11 @@ import router from './router.js'
  * 新增基础控件时按需补充注册；动态字符串使用的 Dialog/Drawer 也必须注册，不能只靠模板静态扫描。
  * 基础样式先于响应式样式加载，否则后定义的默认布局会覆盖窄窗口规则。
  */
+// app：安装 Pinia 和路由后的根 Vue 应用实例。
 const app = createApp(App)
 app.use(createPinia()).use(router)
 // 只注册当前基础组件；完整 UI 库可继续按需导入，避免打包全部组件脚本。
+// component：当前按需注册的 Element Plus 组件，保留动态浮层和表格插槽所需组件。
 for (const component of [
   ElAlert,
   ElButton,

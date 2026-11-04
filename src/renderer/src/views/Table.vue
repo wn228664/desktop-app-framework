@@ -9,8 +9,11 @@ import FrameworkPage from '../components/FrameworkPage.vue'
 import SearchForm from '../components/SearchForm.vue'
 import DataTable from '../components/DataTable.vue'
 
+// query：SearchForm 显式提交的条件快照 ref，输入过程不立即查询。
 const query = ref({})
+// selection：当前可见页选中行 ref，不跨页或持久化。
 const selection = ref([])
+// source：本地能力目录，经稳定一基 id 转成行对象。
 const source = [
   ['AsyncButton', '交互组件', '异步互斥与生命周期取消'],
   ['ActionDialog', '交互组件', '弹窗与抽屉的提交契约'],
@@ -36,35 +39,71 @@ const source = [
   ['Validation', '工具函数', '参数与可信 URL 检查'],
   ['AsyncAction', '工具函数', '单次动作与过期结果隔离'],
   ['DebouncedRef', '工具函数', '输入防抖和卸载清理'],
-].map(([name, category, description], index) => ({
-  id: index + 1,
-  name,
-  category,
-  description,
-  language: 'JavaScript',
-}))
-const filtered = computed(() =>
-  source.filter(
-    (row) =>
-      (!query.value.keyword ||
-        `${row.name} ${row.description}`
-          .toLowerCase()
-          .includes(query.value.keyword.trim().toLowerCase())) &&
-      (!query.value.category || row.category === query.value.category),
-  ),
+].map(
+  /**
+   * 把静态能力条目转换成带稳定示例 id 的行。
+   * name：当前能力条目的公开名称。
+   * category：当前能力条目的中性分类。
+   * description：当前能力条目的说明文字。
+   * index：能力目录零基序号，只用于生成固定示例 id。
+   */
+  ([name, category, description], index) => ({
+    id: index + 1,
+    name,
+    category,
+    description,
+    language: 'JavaScript',
+  }),
 )
+// filtered：按已提交关键字和分类筛选的本地数据派生集合。
+const filtered = computed(
+  /**
+   * 从已提交条件派生筛选结果，不修改 source。
+   */
+  () =>
+    source.filter(
+      /**
+       * 按关键字和分类匹配当前候选行。
+       * row：当前能力行，按名称/说明或分类匹配。
+       */
+      (row) =>
+        (!query.value.keyword ||
+          `${row.name} ${row.description}`
+            .toLowerCase()
+            .includes(query.value.keyword.trim().toLowerCase())) &&
+        (!query.value.category || row.category === query.value.category),
+    ),
+)
+// fields：搜索字段 schema，分类选项由本地目录去重生成。
 const fields = [
   { key: 'keyword', label: '名称或说明', placeholder: '搜索框架能力' },
   {
     key: 'category',
     label: '分类',
     type: 'select',
-    options: [...new Set(source.map((row) => row.category))].map((value) => ({
-      label: value,
-      value,
-    })),
+    options: [
+      ...new Set(
+        source.map(
+          /**
+           * 提取行分类以构造去重的筛选项。
+           * row：当前能力行，按名称/说明或分类匹配。
+           */
+          (row) => row.category,
+        ),
+      ),
+    ].map(
+      /**
+       * 把分类名称转换为显式 label/value 选项。
+       * value：当前去重后的分类名称，同时作为选项 label/value。
+       */
+      (value) => ({
+        label: value,
+        value,
+      }),
+    ),
   },
 ]
+// columns：表格列 schema，名称允许排序，说明列可伸展。
 const columns = [
   { prop: 'name', label: '能力名称', minWidth: 170, sortable: true },
   { prop: 'category', label: '分类', width: 120 },
@@ -73,6 +112,7 @@ const columns = [
 ]
 </script>
 
+<!-- 模板绑定：category 插槽的 value 是当前行原始分类文本，转发给 el-tag；selection-change 的 $event 是当前可见页选中行。 -->
 <template>
   <FrameworkPage
     class="table-page"

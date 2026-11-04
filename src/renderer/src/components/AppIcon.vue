@@ -4,7 +4,17 @@
  * SVG 标为 aria-hidden，图标按钮/折叠导航必须在外层提供 aria-label 或可见文本。
  * 新图标在 paths 中定义 24×24 viewBox 路径；颜色跟随 currentColor，避免明暗主题各维护一份素材。
  */
-defineProps({ name: { type: String, default: 'grid' }, size: { type: Number, default: 20 } })
+defineProps({
+  /** 属性 name：本地路径字典键，默认 grid，未知名称回退 grid。 */
+  name: {
+    type: String,
+    default: 'grid',
+  },
+
+  /** 属性 size：图标宽高逻辑像素，默认 20；可访问名称由外层文字或 aria-label 提供。 */
+  size: { type: Number, default: 20 },
+})
+// paths：本地 24×24 SVG 路径字典，只保存图标线条，不承载页面文字布局。
 const paths = {
   grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
   layers: 'm12 3 10 5-10 5L2 8z M2 12l10 5 10-5 M2 16l10 5 10-5',
